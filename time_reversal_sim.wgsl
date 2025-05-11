@@ -1,8 +1,7 @@
 struct InfoInt {
     grid_size_z: i32,
     grid_size_x: i32,
-    source_z: i32,
-    source_x: i32,
+    microphones_amount: i32,
     i: i32,
 };
 
@@ -22,52 +21,57 @@ var<storage,read> infoF32: InfoFloat;
 var<storage,read> c: array<f32>;
 
 @group(0) @binding(3)
-var<storage,read> source: array<f32>;
+var<storage,read> microphone_z: array<i32>;
 
 @group(0) @binding(4)
-var<storage,read_write> p_next: array<f32>;
+var<storage,read> microphone_x: array<i32>;
 
 @group(0) @binding(5)
-var<storage,read_write> p_current: array<f32>;
+var<storage,read_write> p_next: array<f32>;
 
 @group(0) @binding(6)
-var<storage,read_write> p_previous: array<f32>;
+var<storage,read_write> p_current: array<f32>;
 
 @group(0) @binding(7)
-var<storage,read_write> dp_1_z: array<f32>;
+var<storage,read_write> p_previous: array<f32>;
 
 @group(0) @binding(8)
-var<storage,read_write> dp_1_x: array<f32>;
+var<storage,read_write> dp_1_z: array<f32>;
 
 @group(0) @binding(9)
-var<storage,read_write> dp_2_z: array<f32>;
+var<storage,read_write> dp_1_x: array<f32>;
 
 @group(0) @binding(10)
-var<storage,read_write> dp_2_x: array<f32>;
+var<storage,read_write> dp_2_z: array<f32>;
 
 @group(0) @binding(11)
-var<storage,read_write> psi_z: array<f32>;
+var<storage,read_write> dp_2_x: array<f32>;
 
 @group(0) @binding(12)
-var<storage,read_write> psi_x: array<f32>;
+var<storage,read_write> psi_z: array<f32>;
 
 @group(0) @binding(13)
+var<storage,read_write> psi_x: array<f32>;
+
+@group(0) @binding(14)
 var<storage,read_write> phi_z: array<f32>;
 
-@group(1) @binding(14)
+@group(0) @binding(15)
 var<storage,read_write> phi_x: array<f32>;
 
-@group(1) @binding(15)
+@group(0) @binding(16)
 var<storage,read> absorption_z: array<f32>;
 
-@group(1) @binding(16)
+@group(0) @binding(17)
 var<storage,read> absorption_x: array<f32>;
 
-@group(1) @binding(17)
+@group(0) @binding(18)
 var<storage,read> is_z_absorption: array<i32>;
 
-@group(1) @binding(18)
+@group(0) @binding(19)
 var<storage,read> is_x_absorption: array<i32>;
+
+//FLIPPED_MICROPHONES_BINDINGS
 
 // 2D index to 1D index
 fn zx(z: i32, x: i32) -> i32 {
@@ -146,9 +150,12 @@ fn sim(@builtin(global_invocation_id) index: vec3<u32>) {
 
     p_next[zx(z, x)] += ((2. * p_current[zx(z, x)]) - p_previous[zx(z, x)]);
 
-    if (z == infoI32.source_z && x == infoI32.source_x)
+    for (var microphone_index: i32 = 0; microphone_index < infoI32.microphones_amount; microphone_index += 1)
     {
-        p_next[zx(z, x)] += source[infoI32.i];
+        if (z == microphone_z[microphone_index] && x == microphone_x[microphone_index])
+        {
+            //FLIPPED_MICROPHONES_SIM
+        }
     }
 
     p_previous[zx(z, x)] = p_current[zx(z, x)];
