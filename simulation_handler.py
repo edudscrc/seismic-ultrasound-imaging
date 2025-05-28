@@ -24,7 +24,7 @@ class SimulationHandler:
         self.c = np.full(shape=self.grid_size_shape, fill_value=1500, dtype=np.float32)
 
         # Total time (total amount of frames)
-        self.total_time = np.int32(6000)
+        self.total_time = np.int32(1000)
 
         # Courant
         self.CFL = np.amax(self.c) * self.dt * ((1 / self.dz) + (1 / self.dx))
@@ -47,7 +47,7 @@ class SimulationHandler:
 
         # Choose absorbing boundaries
         # self.is_z_absorption = np.array([False for _ in range(int(self.grid_size_z * self.grid_size_x))]).reshape(self.grid_size_shape)
-        self.is_z_absorption = (z > self.grid_size_z - self.absorption_layer_size)
+        self.is_z_absorption = (z > self.grid_size_z - self.absorption_layer_size) | (z < self.absorption_layer_size)
         self.is_x_absorption = (x > self.grid_size_x - self.absorption_layer_size) | (x < self.absorption_layer_size)
 
         self.absorption_coefficient = np.exp(
@@ -62,7 +62,7 @@ class SimulationHandler:
         self.absorption_z = np.ones(self.grid_size_shape, dtype=np.float32)
         self.absorption_x = np.ones(self.grid_size_shape, dtype=np.float32)
 
-        # self.absorption_z[:self.absorption_layer_size, :] = self.absorption_coefficient[:, np.newaxis][::-1]  # z < layer_size
+        self.absorption_z[:self.absorption_layer_size, :] = self.absorption_coefficient[:, np.newaxis][::-1]  # z < layer_size
         self.absorption_z[-self.absorption_layer_size:, :] = self.absorption_coefficient[:, np.newaxis]  # z > (size_z - layer_size)
         self.absorption_x[:, :self.absorption_layer_size] = self.absorption_coefficient[::-1]  # x < layer_size
         self.absorption_x[:, -self.absorption_layer_size:] = self.absorption_coefficient  # x > (size_x - layer_size)

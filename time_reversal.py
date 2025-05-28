@@ -4,10 +4,14 @@ import matplotlib.pyplot as plt
 from simulation_handler import SimulationHandler
 from pathlib import Path
 import re
+import os
+
 
 class TimeReversal(SimulationHandler):
     def __init__(self, **args):
         super().__init__()
+
+        os.makedirs("./plots_tr", exist_ok=True)
 
         self.folder = Path("./TimeReversalSim")
         self.folder.mkdir(parents=True, exist_ok=True)
@@ -20,16 +24,16 @@ class TimeReversal(SimulationHandler):
         self.transducer_x = args["transducer_x"]
         self.num_transducers = args["num_transducers"]
 
-        source = np.load('./source.npy').astype(np.float32)
-        if len(source) < self.total_time:
-            source = np.pad(source, (0, self.total_time - len(source)), 'constant').astype(np.float32)
-        elif len(source) > self.total_time:
-            source = source[:self.total_time]
+        # source = np.load('./source.npy').astype(np.float32)
+        # if len(source) < self.total_time:
+        #     source = np.pad(source, (0, self.total_time - len(source)), 'constant').astype(np.float32)
+        # elif len(source) > self.total_time:
+        #     source = source[:self.total_time]
 
-        source_idx = ~np.isclose(source, 0)
+        # source_idx = ~np.isclose(source, 0)
 
-        # Cut the recorded source
-        self.bscan[:, ~np.isclose(source_idx, 0)] = np.float32(0)
+        # # Cut the recorded source
+        # self.bscan[:, ~np.isclose(source_idx, 0)] = np.float32(0)
 
         # Flip bscan
         self.flipped_bscan = self.bscan[:, ::-1]
@@ -139,8 +143,8 @@ class TimeReversal(SimulationHandler):
 
             l2_norm += np.square(self.p_next)
             
-            if i % 50 == 0:
-                plt.imsave(f'./plots_tr/pf_{i}.png', self.p_next, cmap='bwr')
+            # if i % 50 == 0:
+            #     plt.imsave(f'./plots_tr/pf_{i}.png', self.p_next, cmap='bwr')
 
-        plt.imsave(f"{self.folder}/l2_norm.png", np.sqrt(l2_norm))
-        np.save(f"{self.folder}/l2_norm.py", np.sqrt(l2_norm))
+        plt.imsave(f"{self.folder}/l2_norm.png", np.sqrt(l2_norm), vmax=np.amax(np.sqrt(l2_norm)) / 2)
+        np.save(f"{self.folder}/l2_norm.npy", np.sqrt(l2_norm))
