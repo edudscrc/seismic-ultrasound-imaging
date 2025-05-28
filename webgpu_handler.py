@@ -23,7 +23,7 @@ class WebGpuHandler:
 
         self.device = wgpu.utils.get_default_device()
 
-    def create_buffers2(self, data):
+    def set_buffers(self, data, *copy_src_buffers):
         re_pattern = r"@group\((\d+)\)\s+@binding\((\d+)\)\s+var<([^>]+)>\s+(\w+)\s*:"
         matches = re.findall(re_pattern, self.shader_string)
 
@@ -31,18 +31,27 @@ class WebGpuHandler:
             binding_types = m[2].split(",")
 
             if "storage" in binding_types:
+                bu = wgpu.BufferUsage.STORAGE
                 if "read_write" in binding_types:
                     bt = wgpu.BufferBindingType.storage
                 else:
                     bt = wgpu.BufferBindingType.read_only_storage
             elif "uniform" in binding_types:
+                bu = wgpu.BufferUsage.UNIFORM
                 bt = wgpu.BufferBindingType.uniform
+            
+            if m[3] in copy_src_buffers:
+                bu = bu | wgpu.BufferUsage.COPY_SRC
+
+            bu = bu | wgpu.BufferUsage.COPY_DST
 
             self.buffers_info[f"g{m[0]}b{m[1]}"] = {
                 "group": int(m[0]),
                 "binding": int(m[1]),
                 "binding_type": bt,
+                "buffer_usage": bu,
                 "name": m[3],
+                "data": data[m[3]],
             }
 
         print(self.buffers_info)
