@@ -83,8 +83,7 @@ class AcousticSimulator(SimulationHandler):
         apply_cpml_to_second_order_diff = self.wgpu_handler.create_compute_pipeline("apply_cpml_to_second_order_diff")
         simulate = self.wgpu_handler.create_compute_pipeline("simulate")
         increment_time = self.wgpu_handler.create_compute_pipeline("increment_time")
-
-        time_st = perf_counter()
+        
         for i in range(self.total_time):
             command_encoder = self.wgpu_handler.device.create_command_encoder()
             compute_pass = command_encoder.begin_compute_pass()
@@ -102,8 +101,8 @@ class AcousticSimulator(SimulationHandler):
             compute_pass.end()
             self.wgpu_handler.device.queue.submit([command_encoder.finish()])
 
-            """ READ BUFFERS """
-            self.p_next = np.asarray(self.wgpu_handler.device.queue.read_buffer(self.wgpu_handler.buffers[0]).cast("f")).reshape(self.grid_size_shape)
+            self.p_next = self.wgpu_handler.read_buffer(group=0, binding=0)
+            self.p_next = np.frombuffer(self.p_next, dtype=np.float32).reshape(self.grid_size_shape)
 
             self.recordings[:, i] = self.p_next[self.transducer_z[:], self.transducer_x[:]]
 
@@ -111,9 +110,5 @@ class AcousticSimulator(SimulationHandler):
                 plt.imsave(f'./plots/pf_{i}.png', self.p_next, cmap='bwr')
 
         np.save(f"{self.folder}/recordings.npy", self.recordings)
-
-        time_end = perf_counter()
-
-        print(f'Total time: {time_end - time_st} seconds')
 
         print('Synthetic Acoustic Simulation finished.')

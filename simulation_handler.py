@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 
 class SimulationHandler:
     def __init__(self):
-
         # dt = 1 / fs
         # fs = 1 / dt
         # (s/px)
@@ -29,16 +28,8 @@ class SimulationHandler:
         # Courant
         self.CFL = np.amax(self.c) * self.dt * ((1 / self.dz) + (1 / self.dx))
 
-        # Pressure fields
+        # Pressure field
         self.p_next = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.p_current = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.p_previous = np.zeros(self.grid_size_shape, dtype=np.float32)
-
-        # Partial derivatives
-        self.dp_1_z = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.dp_1_x = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.dp_2_z = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.dp_2_x = np.zeros(self.grid_size_shape, dtype=np.float32)
 
         """ CPML """
         self.absorption_layer_size = np.int32(25)
@@ -53,11 +44,6 @@ class SimulationHandler:
         self.absorption_coefficient = np.exp(
             -(self.damping_coefficient * (np.arange(self.absorption_layer_size) / self.absorption_layer_size) ** 2) * self.dt
         ).astype(np.float32)
-
-        self.psi_z = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.psi_x = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.phi_z = np.zeros(self.grid_size_shape, dtype=np.float32)
-        self.phi_x = np.zeros(self.grid_size_shape, dtype=np.float32)
 
         self.absorption_z = np.ones(self.grid_size_shape, dtype=np.float32)
         self.absorption_x = np.ones(self.grid_size_shape, dtype=np.float32)

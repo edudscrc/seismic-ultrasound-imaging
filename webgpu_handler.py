@@ -17,7 +17,7 @@ class WebGpuHandler:
         self.bind_group_entries = {}
         self.bind_groups = []
 
-        self.buffers_info = {}
+        self.buffers_info = []
 
         self.device = wgpu.utils.get_default_device()
 
@@ -63,7 +63,7 @@ class WebGpuHandler:
 
             bu = bu | wgpu.BufferUsage.COPY_DST
 
-            self.buffers_info[f"g{m[0]}b{m[1]}"] = {
+            self.buffers_info.append({
                 "group": int(m[0]),
                 "binding": int(m[1]),
                 "binding_type": bt,
@@ -71,13 +71,13 @@ class WebGpuHandler:
                 "name": m[3],
                 "data": data[m[3]][0],
                 "zero_initialized": data[m[3]][1],
-            }
+            })
 
     def create_buffers(self):
         command_encoder = self.device.create_command_encoder()
         cleared_buffer = False
 
-        for v in self.buffers_info.values():
+        for v in self.buffers_info:
             if v["zero_initialized"]:
                 self.buffers.append(
                     self.device.create_buffer(
@@ -87,7 +87,7 @@ class WebGpuHandler:
                 )
                 command_encoder.clear_buffer(self.buffers[-1], 0, self.buffers[-1].size)
                 cleared_buffer = True
-                print(f"\nCreated buffer:\nSize: {v["data"]}\nGroup: {v["group"]}\nBinding: {v["binding"]}\nName: {v["name"]}")
+                print(f"\nCreated buffer:\nName: {v["name"]}\nSize: {v["data"]}\nGroup: {v["group"]}\nBinding: {v["binding"]}")
             else:
                 self.buffers.append(
                     self.device.create_buffer_with_data(
@@ -95,13 +95,13 @@ class WebGpuHandler:
                         usage=v["buffer_usage"]
                     )
                 )
-                print(f"\nCreated buffer:\nSize: {v["data"].nbytes}\nGroup: {v["group"]}\nBinding: {v["binding"]}\nName: {v["name"]}")
+                print(f"\nCreated buffer:\nName: {v["name"]}\nSize: {v["data"].nbytes}\nGroup: {v["group"]}\nBinding: {v["binding"]}")
         
         if cleared_buffer:
             self.device.queue.submit([command_encoder.finish()])
     
     def create_bind_group_layouts(self):
-        for v in self.buffers_info.values():
+        for v in self.buffers_info:
             if self.bind_group_layout_entries.get(v["group"]) is None:
                 self.bind_group_layout_entries.update({v["group"]: []})
 
@@ -125,7 +125,7 @@ class WebGpuHandler:
 
 
     def create_bind_groups(self):
-        for idx, v in enumerate(self.buffers_info.values()):
+        for idx, v in enumerate(self.buffers_info):
             if self.bind_group_entries.get(v["group"]) is None:
                 self.bind_group_entries.update({v["group"]: []})
             
@@ -162,3 +162,9 @@ class WebGpuHandler:
             while len(workgroups_to_dispatch) < 3:
                 workgroups_to_dispatch.append(1)
             compute_pass.dispatch_workgroups(workgroups_to_dispatch[0], workgroups_to_dispatch[1], workgroups_to_dispatch[2])
+
+    def read_buffer(self, group, binding):
+        for idx, v in enumerate(self.buffers_info):
+            if v["group"] == group and v["binding"] == binding:
+                return self.device.queue.read_buffer(self.buffers[idx])
+        return None
