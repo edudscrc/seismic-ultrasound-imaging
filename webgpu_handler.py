@@ -7,11 +7,14 @@ class WebGpuHandler:
     def __init__(self):
         self.shader_module = None
         self.pipeline_layout = None
+
         self.buffers = []
 
         self.bind_group_layout_entries = {}
         self.bind_group_layouts = []
-        self.bind_group_entries = []
+
+        self.bind_group_entries = {}
+        self.bind_groups = []
 
         self.buffers_info = {}
 
@@ -110,4 +113,22 @@ class WebGpuHandler:
         )
 
     def create_bind_groups(self):
-        pass
+        for idx, v in enumerate(self.buffers_info.values()):
+            if self.bind_group_entries.get(v["group"]) is None:
+                self.bind_group_entries.update({v["group"]: []})
+            
+            self.bind_group_entries[v["group"]].append(
+                {
+                    "binding": v["binding"],
+                    "resource": {
+                        "buffer": self.buffers[idx],
+                        "offset": 0,
+                        "size": self.buffers[idx].size,
+                    },
+                }
+            )
+
+        for k, v in self.bind_group_entries.items():
+            self.bind_groups.append(
+                self.device.create_bind_group(layout=self.bind_group_layouts[k], entries=v)
+            )
