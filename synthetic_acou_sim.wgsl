@@ -71,7 +71,6 @@ var<storage,read> is_x_absorption: array<i32>;
 @group(1) @binding(8)
 var<storage,read_write> i: i32;
 
-
 // 2D index to 1D index
 fn zx(z: i32, x: i32) -> i32 {
     let index = x + z * infoI32.grid_size_x;
@@ -81,7 +80,7 @@ fn zx(z: i32, x: i32) -> i32 {
 }
 
 @compute
-@workgroup_size(wsz, wsx)
+@workgroup_size(wsx, wsy, wsz)
 fn forward_diff(@builtin(global_invocation_id) index: vec3<u32>) {
     let z: i32 = i32(index.x);
     let x: i32 = i32(index.y);
@@ -97,7 +96,7 @@ fn forward_diff(@builtin(global_invocation_id) index: vec3<u32>) {
 }
 
 @compute
-@workgroup_size(wsz, wsx)
+@workgroup_size(wsx, wsy, wsz)
 fn backward_diff(@builtin(global_invocation_id) index: vec3<u32>) {
     let z: i32 = i32(index.x);
     let x: i32 = i32(index.y);
@@ -113,7 +112,7 @@ fn backward_diff(@builtin(global_invocation_id) index: vec3<u32>) {
 }
 
 @compute
-@workgroup_size(wsz, wsx)
+@workgroup_size(wsx, wsy, wsz)
 fn apply_cpml_to_first_order_diff(@builtin(global_invocation_id) index: vec3<u32>) {
     let z: i32 = i32(index.x);
     let x: i32 = i32(index.y);
@@ -131,7 +130,7 @@ fn apply_cpml_to_first_order_diff(@builtin(global_invocation_id) index: vec3<u32
 }
 
 @compute
-@workgroup_size(wsz, wsx)
+@workgroup_size(wsx, wsy, wsz)
 fn apply_cpml_to_second_order_diff(@builtin(global_invocation_id) index: vec3<u32>) {
     let z: i32 = i32(index.x);
     let x: i32 = i32(index.y);
@@ -149,7 +148,7 @@ fn apply_cpml_to_second_order_diff(@builtin(global_invocation_id) index: vec3<u3
 }
 
 @compute
-@workgroup_size(wsz, wsx)
+@workgroup_size(wsx, wsy, wsz)
 fn simulate(@builtin(global_invocation_id) index: vec3<u32>) {
     let z: i32 = i32(index.x);
     let x: i32 = i32(index.y);

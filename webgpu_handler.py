@@ -1,30 +1,52 @@
 import wgpu
-import wgpu.backends.wgpu_native
+from pathlib import Path
+import re
 
 
 class WebGpuHandler:
-    def __init__(self, shader_file, **workgroup_sizes):
+    def __init__(self, shader_path, workgroup_size_x=8, workgroup_size_y=8, workgroup_size_z=4):
         self.shader_module = None
         self.pipeline_layout = None
         self.bind_groups = None
         self.buffers = None
 
-        self.ws = []
+        self.bind_group_layout_entries = []
+        self.bind_group_entries = []
 
-        for k, v in workgroup_sizes.items():
-            for i in range(15, 0, -1):
-                if (v % i) == 0:
-                    self.ws.append(i)
-                    break
+        self.buffers_info = {}
 
-        shader_file = open(shader_file)
-        self.shader_string = shader_file.read()
-        for idx, k in enumerate(workgroup_sizes.keys()):
-            self.shader_string = self.shader_string.replace(k, f'{self.ws[idx]}')
-        shader_file.close()
+        self.workgroup_size = (workgroup_size_x, workgroup_size_y, workgroup_size_z)
 
-        # GPU device
+        self.shader_string = Path(shader_path).read_text(encoding='utf-8')
+        for idx, k in enumerate(["wsx", "wsy", "wsz"]):
+            self.shader_string = self.shader_string.replace(k, f'{self.workgroup_size[idx]}')
+
         self.device = wgpu.utils.get_default_device()
+
+    def create_buffers2(self, data):
+        re_pattern = r"@group\((\d+)\)\s+@binding\((\d+)\)\s+var<([^>]+)>\s+(\w+)\s*:"
+        matches = re.findall(re_pattern, self.shader_string)
+
+        for m in matches:
+            binding_types = m[2].split(",")
+
+            if "storage" in binding_types:
+                if "read_write" in binding_types:
+                    bt = wgpu.BufferBindingType.storage
+                else:
+                    bt = wgpu.BufferBindingType.read_only_storage
+            elif "uniform" in binding_types:
+                bt = wgpu.BufferBindingType.uniform
+
+            self.buffers_info[f"g{m[0]}b{m[1]}"] = {
+                "group": int(m[0]),
+                "binding": int(m[1]),
+                "binding_type": bt,
+                "name": m[3],
+            }
+
+        print(self.buffers_info)
+        
 
     def create_shader_module(self):
         self.shader_module = self.device.create_shader_module(code=self.shader_string)
@@ -75,7 +97,7 @@ class WebGpuHandler:
                 if f'{group}' not in bind_groups_entries:
                     bind_groups_entries[f'{group}'] = list()
 
-                buffers[f'b{binding}'] = self.create_buffer(data[data_and_binding_type[0]], binding,
+                buffers[f'g{group}b{binding}'] = self.create_buffer(data[data_and_binding_type[0]], binding,
                                                             buffer_binding_type,
                                                             bind_groups_layouts_entries[f'{group}'],
                                                             bind_groups_entries[f'{group}'])
@@ -115,8 +137,12 @@ class WebGpuHandler:
         Returns:
             GPUBuffer object: Buffer created with create_buffer_with_data().
         """
-        new_buffer = self.device.create_buffer_with_data(data=data,
+        if binding_number == "0" and buffer_binding_type == wgpu.BufferBindingType.storage:
+            new_buffer = self.device.create_buffer_with_data(data=data,
                                                          usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC)
+        else:
+            new_buffer = self.device.create_buffer_with_data(data=data,
+                                                         usage=wgpu.BufferUsage.STORAGE)
 
         bind_groups_layouts_entries.append({
             'binding': binding_number,
