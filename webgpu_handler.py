@@ -8,7 +8,7 @@ class WebGpuHandler:
         self.shader_module = None
         self.pipeline_layout = None
         self.bind_groups = None
-        self.buffers = None
+        self.buffers = []
 
         self.bind_group_layout_entries = []
         self.bind_group_entries = []
@@ -51,11 +51,28 @@ class WebGpuHandler:
                 "binding_type": bt,
                 "buffer_usage": bu,
                 "name": m[3],
-                "data": data[m[3]],
+                "data": data[m[3]][0],
+                "zero_initialized": data[m[3]][1],
             }
 
-        print(self.buffers_info)
-        
+    def create_buffers(self):
+        for v in self.buffers_info.values():
+            if v["zero_initialized"]:
+                self.buffers.append(
+                    self.device.create_buffer(
+                        size=v["data"],
+                        usage=v["buffer_usage"]
+                    )
+                )
+                print(f"\nCreated buffer:\nSize: {v["data"]}\nGroup: {v["group"]}\nBinding: {v["binding"]}\nName: {v["name"]}")
+            else:
+                self.buffers.append(
+                    self.device.create_buffer_with_data(
+                        data=v["data"],
+                        usage=v["buffer_usage"]
+                    )
+                )
+                print(f"\nCreated buffer:\nSize: {v["data"].nbytes}\nGroup: {v["group"]}\nBinding: {v["binding"]}\nName: {v["name"]}")
 
     def create_shader_module(self):
         self.shader_module = self.device.create_shader_module(code=self.shader_string)
@@ -74,52 +91,6 @@ class WebGpuHandler:
             layout=self.pipeline_layout,
             compute={"module": self.shader_module, "entry_point": entry_point}
         )
-
-    def create_buffers(self, data):
-        """
-        Creates a dictionary containing all created buffers.
-
-        Arguments:
-            data (dict): Dictionary containing any object supporting the Python buffer protocol.
-                         It's the data that will be passed to bindings on gpu.
-
-        Returns:
-            dict: Dictionary containing all created buffers. The key is a string named as 'b0', 'b1', etc...
-                  where 'b0' is @binding(0), for example. The value is a GPUBuffer.
-        """
-        buffers = dict()
-        bind_groups_layouts_entries = dict()
-        bind_groups_entries = dict()
-
-        shader_lines = list(self.shader_string.split('\n'))
-
-        shader_bindings = read_shader_bindings(shader_lines)
-
-        for group, binding_list in shader_bindings.items():
-            for binding, data_and_binding_type in binding_list.items():
-                buffer_binding_type = wgpu.BufferBindingType.read_only_storage if data_and_binding_type[1] == 'read' \
-                    else wgpu.BufferBindingType.storage
-
-                if f'{group}' not in bind_groups_layouts_entries:
-                    bind_groups_layouts_entries[f'{group}'] = list()
-
-                if f'{group}' not in bind_groups_entries:
-                    bind_groups_entries[f'{group}'] = list()
-
-                buffers[f'g{group}b{binding}'] = self.create_buffer(data[data_and_binding_type[0]], binding,
-                                                            buffer_binding_type,
-                                                            bind_groups_layouts_entries[f'{group}'],
-                                                            bind_groups_entries[f'{group}'])
-
-        bind_groups_layouts_entries = dict(sorted(bind_groups_layouts_entries.items()))
-        bind_groups_entries = dict(sorted(bind_groups_entries.items()))
-
-        bind_groups_layouts_entries_list = [v for k, v in bind_groups_layouts_entries.items()]
-        bind_groups_entries_list = [v for k, v in bind_groups_entries.items()]
-
-        self.create_pipeline_layout(bind_groups_layouts_entries_list, bind_groups_entries_list)
-
-        self.buffers = buffers
 
     def create_buffer(
             self,
