@@ -4,26 +4,30 @@ import matplotlib.pyplot as plt
 
 
 class SimulationHandler:
-    def __init__(self):
-        # dt = 1 / fs
-        # fs = 1 / dt
+    def __init__(self, **kwargs):
         # (s/px)
-        self.dt = np.float32(5e-7)
+        self.dt = np.float32(kwargs["dt"])
 
         # Spatial sampling (m/px)
-        self.dz = np.float32(1.5e-3)
-        self.dx = np.float32(1.5e-3)
+        self.dz = np.float32(kwargs["dz"])
+        self.dx = np.float32(kwargs["dx"])
 
         # Size of each axis in pixels
-        self.grid_size_z = np.int32(1000)
-        self.grid_size_x = np.int32(1000)
+        self.grid_size_z = np.int32(kwargs["grid_size_z"])
+        self.grid_size_x = np.int32(kwargs["grid_size_x"])
         self.grid_size_shape = (self.grid_size_z, self.grid_size_x)
 
+        self.roi_nbytes = int(self.grid_size_z * self.grid_size_x * np.dtype(np.int32).itemsize)
+
         # Speed (m/s)
-        self.c = np.full(shape=self.grid_size_shape, fill_value=1500, dtype=np.float32)
+        self.c = np.full(shape=self.grid_size_shape, fill_value=kwargs["c"], dtype=np.float32)
 
         # Total time (total amount of frames)
-        self.total_time = np.int32(1000)
+        self.total_time = np.int32(kwargs["total_time"])
+
+        self.transducer_z = kwargs["transducer_z"]
+        self.transducer_x = kwargs["transducer_x"]
+        self.num_transducers = kwargs["num_transducers"]
 
         # Courant
         self.CFL = np.amax(self.c) * self.dt * ((1 / self.dz) + (1 / self.dx))
@@ -32,12 +36,11 @@ class SimulationHandler:
         self.p_next = np.zeros(self.grid_size_shape, dtype=np.float32)
 
         """ CPML """
-        self.absorption_layer_size = np.int32(25)
-        self.damping_coefficient = np.float32(3e6)
+        self.absorption_layer_size = np.int32(kwargs["cpml_absorption_layer_size"])
+        self.damping_coefficient = np.float32(kwargs["damping_coefficient"])
         x, z = np.meshgrid(np.arange(self.grid_size_x, dtype=np.float32), np.arange(self.grid_size_z, dtype=np.float32))
 
         # Choose absorbing boundaries
-        # self.is_z_absorption = np.array([False for _ in range(int(self.grid_size_z * self.grid_size_x))]).reshape(self.grid_size_shape)
         self.is_z_absorption = (z > self.grid_size_z - self.absorption_layer_size) | (z < self.absorption_layer_size)
         self.is_x_absorption = (x > self.grid_size_x - self.absorption_layer_size) | (x < self.absorption_layer_size)
 

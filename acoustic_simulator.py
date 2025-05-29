@@ -5,32 +5,27 @@ from simulation_handler import SimulationHandler
 import os
 from pathlib import Path
 from time import perf_counter
+from scipy.signal.windows import gaussian
 
 
 class AcousticSimulator(SimulationHandler):
-    def __init__(self, **args):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         os.makedirs("./plots", exist_ok=True)
 
         self.folder = Path("./AcousticSim")
         self.folder.mkdir(parents=True, exist_ok=True)
 
-        self.transducer_z = args["transducer_z"]
-        self.transducer_x = args["transducer_x"]
-        self.num_transducers = args["num_transducers"]
-
         self.recordings = np.asarray([[0 for _ in range(self.total_time)] for _ in range(self.num_transducers)], dtype=np.float32)
 
-        self.source_z = 400
-        self.source_x = 800
+        self.source_z = kwargs["source_z"]
+        self.source_x = kwargs["source_x"]
 
-        self.source = np.load('./source.npy').astype(np.float32)
-        if len(self.source) < self.total_time:
-            self.source = np.pad(self.source, (0, self.total_time - len(self.source)), 'constant').astype(np.float32)
-        elif len(self.source) > self.total_time:
-            self.source = self.source[:self.total_time]
-        
+        self.source = gaussian(self.total_time, 1.5)
+        self.source = np.roll(self.source, -1 * int(self.total_time / 2 - 20))
+        self.source = self.source.astype(np.float32)
+
         self.info_i32 = np.array(
             [
                 self.grid_size_z,
@@ -45,21 +40,19 @@ class AcousticSimulator(SimulationHandler):
 
         self.wgpu_handler.create_shader_module("./synthetic_acou_sim.wgsl", self.grid_size_shape, (8, 8))
 
-        nbytes = int(self.grid_size_x * self.grid_size_z * 4)
-
         # Data passed to gpu buffers
         wgsl_data = {
-            'p_next': (nbytes, True),
-            'p_current': (nbytes, True),
-            'p_previous': (nbytes, True),
-            'dp_1_z': (nbytes, True),
-            'dp_1_x': (nbytes, True),
-            'dp_2_z': (nbytes, True),
-            'dp_2_x': (nbytes, True),
-            'phi_z': (nbytes, True),
-            'phi_x': (nbytes, True),
-            'psi_z': (nbytes, True),
-            'psi_x': (nbytes, True),
+            'p_next': (self.roi_nbytes, True),
+            'p_current': (self.roi_nbytes, True),
+            'p_previous': (self.roi_nbytes, True),
+            'dp_1_z': (self.roi_nbytes, True),
+            'dp_1_x': (self.roi_nbytes, True),
+            'dp_2_z': (self.roi_nbytes, True),
+            'dp_2_x': (self.roi_nbytes, True),
+            'phi_z': (self.roi_nbytes, True),
+            'phi_x': (self.roi_nbytes, True),
+            'psi_z': (self.roi_nbytes, True),
+            'psi_x': (self.roi_nbytes, True),
             'infoI32': (self.info_i32, False),
             'infoF32': (self.info_f32, False),
             'c': (self.c, False),
@@ -83,7 +76,8 @@ class AcousticSimulator(SimulationHandler):
         apply_cpml_to_second_order_diff = self.wgpu_handler.create_compute_pipeline("apply_cpml_to_second_order_diff")
         simulate = self.wgpu_handler.create_compute_pipeline("simulate")
         increment_time = self.wgpu_handler.create_compute_pipeline("increment_time")
-        
+
+        amax = 1.9765985 / 3
         for i in range(self.total_time):
             command_encoder = self.wgpu_handler.device.create_command_encoder()
             compute_pass = command_encoder.begin_compute_pass()
@@ -104,11 +98,15 @@ class AcousticSimulator(SimulationHandler):
             self.p_next = self.wgpu_handler.read_buffer(group=0, binding=0)
             self.p_next = np.frombuffer(self.p_next, dtype=np.float32).reshape(self.grid_size_shape)
 
+            # if np.amax(self.p_next) > amax:
+            #     amax = np.amax(self.p_next)
+
             self.recordings[:, i] = self.p_next[self.transducer_z[:], self.transducer_x[:]]
 
             if i % 50 == 0:
-                plt.imsave(f'./plots/pf_{i}.png', self.p_next, cmap='bwr')
+                plt.imsave(f'./plots/pf_{i}.png', self.p_next, cmap='bwr', vmax=amax, vmin=-amax)
 
+        # print(amax)
         np.save(f"{self.folder}/recordings.npy", self.recordings)
 
         print('Synthetic Acoustic Simulation finished.')
