@@ -60,14 +60,8 @@ class SimulationHandler:
         self.is_z_absorption_int = self.is_z_absorption.astype(np.int32)
         self.is_x_absorption_int = self.is_x_absorption.astype(np.int32)
 
-        # self.transducer_z = None
-        # self.transducer_x = None
-        # self.transducers_amount = None
-
         # self.reflector_z, self.reflector_x = np.where(self.c == 0)
         # self.reflectors_amount = None
-
-        # self.transducers_recording = np.array([[0 for _ in range(self.total_time)] for _ in range(self.transducers_amount)], dtype=np.float32)
 
         # WebGPU buffer
         self.info_f32 = np.array(

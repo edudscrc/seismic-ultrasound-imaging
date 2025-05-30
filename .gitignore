@@ -178,3 +178,5 @@ cython_debug/
 plots*/
 AcousticSim/
 TimeReversalSim/
+
+injected_tr.wgsl

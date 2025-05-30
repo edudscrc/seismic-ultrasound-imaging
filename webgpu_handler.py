@@ -8,17 +8,12 @@ class WebGpuHandler:
     def __init__(self):
         self.shader_module = None
         self.pipeline_layout = None
-
         self.buffers = []
-
         self.bind_group_layout_entries = {}
         self.bind_group_layouts = []
-
         self.bind_group_entries = {}
         self.bind_groups = []
-
         self.buffers_info = []
-
         self.device = wgpu.utils.get_default_device()
 
     def create_shader_module(self, shader_path, roi_size, workgroup_size: tuple):

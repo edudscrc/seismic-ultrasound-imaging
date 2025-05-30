@@ -23,8 +23,7 @@ class AcousticSimulator(SimulationHandler):
         self.source_x = kwargs["source_x"]
 
         self.source = gaussian(self.total_time, 1.5)
-        self.source = np.roll(self.source, -1 * int(self.total_time / 2 - 20))
-        self.source = self.source.astype(np.float32)
+        self.source = np.roll(self.source, -1 * int(self.total_time / 2 - 20)).astype(np.float32)
 
         self.info_i32 = np.array(
             [
@@ -37,7 +36,6 @@ class AcousticSimulator(SimulationHandler):
         )
 
         self.wgpu_handler = WebGpuHandler()
-
         self.wgpu_handler.create_shader_module("./synthetic_acou_sim.wgsl", self.grid_size_shape, (8, 8))
 
         # Data passed to gpu buffers
@@ -77,7 +75,6 @@ class AcousticSimulator(SimulationHandler):
         simulate = self.wgpu_handler.create_compute_pipeline("simulate")
         increment_time = self.wgpu_handler.create_compute_pipeline("increment_time")
 
-        amax = 1.9765985 / 3
         for i in range(self.total_time):
             command_encoder = self.wgpu_handler.device.create_command_encoder()
             compute_pass = command_encoder.begin_compute_pass()
@@ -98,15 +95,15 @@ class AcousticSimulator(SimulationHandler):
             self.p_next = self.wgpu_handler.read_buffer(group=0, binding=0)
             self.p_next = np.frombuffer(self.p_next, dtype=np.float32).reshape(self.grid_size_shape)
 
-            # if np.amax(self.p_next) > amax:
-            #     amax = np.amax(self.p_next)
-
             self.recordings[:, i] = self.p_next[self.transducer_z[:], self.transducer_x[:]]
 
             if i % 50 == 0:
-                plt.imsave(f'./plots/pf_{i}.png', self.p_next, cmap='bwr', vmax=amax, vmin=-amax)
+                plt.figure()
+                plt.scatter(self.transducer_x, self.transducer_z, s=0.05)
+                plt.imshow(self.p_next, cmap='bwr', vmax=1.94 / 5, vmin=-1.94 / 5)
+                plt.savefig(f'./plots/pf_{i}.png', dpi=300)
+                plt.close()
 
-        # print(amax)
         np.save(f"{self.folder}/recordings.npy", self.recordings)
 
-        print('Synthetic Acoustic Simulation finished.')
+        print('Acoustic Simulation finished.')
