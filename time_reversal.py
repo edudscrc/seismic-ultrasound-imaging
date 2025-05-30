@@ -5,7 +5,6 @@ from simulation_handler import SimulationHandler
 from pathlib import Path
 import re
 import os
-from scipy.signal.windows import gaussian
 
 
 class TimeReversal(SimulationHandler):
@@ -21,16 +20,11 @@ class TimeReversal(SimulationHandler):
 
         self.bscan = np.load(f"{acoustic_sim_folder}/recordings.npy")
 
-        source = gaussian(self.total_time, 1.5) * 10
-        source = np.roll(source, -1 * int(self.total_time / 2 - 20)).astype(np.float32)
-
-        # source_idx = ~np.isclose(source, 0)
-
-        # # Cut the recorded source
-        # self.bscan[:, ~np.isclose(source_idx, 0)] = np.float32(0)
-
         # Flip bscan
         self.flipped_bscan = self.bscan[:, ::-1]
+
+        self.total_time += 1000
+        self.flipped_bscan = np.concatenate((self.flipped_bscan, np.zeros((64, 1000), dtype=np.float32)), axis=1)
 
         # WebGPU Buffer
         self.info_i32 = np.array(
@@ -104,8 +98,6 @@ var<storage,read> flipped_recording_{i}: array<f32>;\n\n'''
         simulate = self.wgpu_handler.create_compute_pipeline("simulate")
         increment_time = self.wgpu_handler.create_compute_pipeline("increment_time")
 
-        l2_norm = np.zeros(self.grid_size_shape, dtype=np.float32)
-
         for i in range(self.total_time):
             command_encoder = self.wgpu_handler.device.create_command_encoder()
             compute_pass = command_encoder.begin_compute_pass()
@@ -125,17 +117,12 @@ var<storage,read> flipped_recording_{i}: array<f32>;\n\n'''
 
             self.p_next = self.wgpu_handler.read_buffer(group=0, binding=0)
             self.p_next = np.frombuffer(self.p_next, dtype=np.float32).reshape(self.grid_size_shape)
-
-            l2_norm += np.square(self.p_next)
             
             if i % 50 == 0:
                 plt.figure()
                 plt.scatter(self.transducer_x, self.transducer_z, s=0.05)
-                plt.imshow(self.p_next, cmap='bwr', vmax=1.94 / 5, vmin=-1.94 / 5)
+                plt.imshow(self.p_next, cmap='bwr')
                 plt.savefig(f'./plots_tr/pf_{i}.png', dpi=300)
                 plt.close()
-
-        plt.imsave(f"{self.folder}/l2_norm.png", np.sqrt(l2_norm), vmax=np.amax(np.sqrt(l2_norm)) / 2)
-        np.save(f"{self.folder}/l2_norm.npy", np.sqrt(l2_norm))
 
         print('Time Reversal Simulation finished.')

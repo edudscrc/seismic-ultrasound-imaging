@@ -12,7 +12,7 @@ start_x = grid_center_x - (num_transducers // 2) * 8
 transducer_x = np.array([start_x + i * 8 for i in range(num_transducers)], dtype=np.int32)
 
 global_sim_params = {
-    'total_time': 3000,
+    'total_time': 1500,
     'grid_size_z': 1000,
     'grid_size_x': 1000,
     'num_transducers': 64,
@@ -41,5 +41,5 @@ time_reversal_params = {
 acoustic_sim_params.update(global_sim_params)
 time_reversal_params.update(global_sim_params)
 
-sh = AcousticSimulator(**acoustic_sim_params)
+# sh = AcousticSimulator(**acoustic_sim_params)
 tr = TimeReversal(**time_reversal_params)

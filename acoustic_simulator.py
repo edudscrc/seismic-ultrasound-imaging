@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from simulation_handler import SimulationHandler
 import os
 from pathlib import Path
-from time import perf_counter
 from scipy.signal.windows import gaussian
 
 
@@ -100,7 +99,8 @@ class AcousticSimulator(SimulationHandler):
             if i % 50 == 0:
                 plt.figure()
                 plt.scatter(self.transducer_x, self.transducer_z, s=0.05)
-                plt.imshow(self.p_next, cmap='bwr', vmax=1.94 / 5, vmin=-1.94 / 5)
+                plt.scatter(self.source_x, self.source_z, s=0.05)
+                plt.imshow(self.p_next, cmap='bwr')
                 plt.savefig(f'./plots/pf_{i}.png', dpi=300)
                 plt.close()
 

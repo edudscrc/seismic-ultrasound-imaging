@@ -1,6 +1,4 @@
 import numpy as np
-from webgpu_handler import WebGpuHandler
-import matplotlib.pyplot as plt
 
 
 class SimulationHandler:
