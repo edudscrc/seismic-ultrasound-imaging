@@ -18,7 +18,7 @@ class SimulationHandler:
         self.roi_nbytes = int(self.grid_size_z * self.grid_size_x * np.dtype(np.int32).itemsize)
 
         # Speed (m/s)
-        self.c = np.full(shape=self.grid_size_shape, fill_value=kwargs["c"], dtype=np.float32)
+        self.c = kwargs["c"]
 
         # Total time (total amount of frames)
         self.total_time = np.int32(kwargs["total_time"])
