@@ -68,7 +68,7 @@ class WebGpuHandler:
                 "zero_initialized": data[m[3]][1],
             })
 
-    def create_buffers(self):
+    def create_buffers(self, debug=False):
         command_encoder = self.device.create_command_encoder()
         cleared_buffer = False
 
@@ -82,7 +82,8 @@ class WebGpuHandler:
                 )
                 command_encoder.clear_buffer(self.buffers[-1], 0, self.buffers[-1].size)
                 cleared_buffer = True
-                print(f"\nCreated buffer:\nName: {v["name"]}\nSize: {v["data"]}\nGroup: {v["group"]}\nBinding: {v["binding"]}")
+                if debug:
+                    print(f"\nCreated buffer:\nName: {v["name"]}\nSize: {v["data"]}\nGroup: {v["group"]}\nBinding: {v["binding"]}")
             else:
                 self.buffers.append(
                     self.device.create_buffer_with_data(
@@ -90,7 +91,8 @@ class WebGpuHandler:
                         usage=v["buffer_usage"]
                     )
                 )
-                print(f"\nCreated buffer:\nName: {v["name"]}\nSize: {v["data"].nbytes}\nGroup: {v["group"]}\nBinding: {v["binding"]}")
+                if debug:
+                    print(f"\nCreated buffer:\nName: {v["name"]}\nSize: {v["data"].nbytes}\nGroup: {v["group"]}\nBinding: {v["binding"]}")
         
         if cleared_buffer:
             self.device.queue.submit([command_encoder.finish()])

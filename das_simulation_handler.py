@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class SimulationHandler:
+class DAS_SimulationHandler:
     def __init__(self, **kwargs):
         # (s/px)
         self.dt = np.float32(kwargs["dt"])
@@ -17,10 +17,7 @@ class SimulationHandler:
 
         self.roi_nbytes = int(self.grid_size_z * self.grid_size_x * np.dtype(np.int32).itemsize)
 
-        self.mode = kwargs["mode"]
-
         # Speed (m/s)
-        self.c_with_reflectors = kwargs["c_with_reflectors"]
         self.c = kwargs["c"]
 
         # Total time (total amount of frames)
@@ -31,10 +28,8 @@ class SimulationHandler:
         self.num_transducers = kwargs["num_transducers"]
 
         # Courant
-        if self.mode == 0:
-            self.CFL = np.amax(self.c_with_reflectors) * self.dt * ((1 / self.dz) + (1 / self.dx))
-        elif self.mode == 1:
-            self.CFL = np.amax(self.c) * self.dt * ((1 / self.dz) + (1 / self.dx))
+        self.CFL = np.amax(self.c) * self.dt * ((1 / self.dz) + (1 / self.dx))
+        print(f'{self.CFL = }')
 
         # Pressure field
         self.p_next = np.zeros(self.grid_size_shape, dtype=np.float32)
@@ -63,9 +58,6 @@ class SimulationHandler:
         # Converts boolean array to int array to pass to GPU
         self.is_z_absorption_int = self.is_z_absorption.astype(np.int32)
         self.is_x_absorption_int = self.is_x_absorption.astype(np.int32)
-
-        self.reflector_z, self.reflector_x = np.where(self.c_with_reflectors == 0)
-        # self.reflectors_amount = len(self.reflector_z)
 
         # WebGPU buffer
         self.info_f32 = np.array(

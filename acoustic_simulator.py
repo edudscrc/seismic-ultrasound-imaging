@@ -11,18 +11,35 @@ class AcousticSimulator(SimulationHandler):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        os.makedirs("./plots", exist_ok=True)
+        self.plots_folder = Path("./plots_ac")
+        self.plots_folder.mkdir(parents=True, exist_ok=True)
+
+        for item in self.plots_folder.iterdir():
+            item.unlink()
 
         self.folder = Path("./AcousticSim")
         self.folder.mkdir(parents=True, exist_ok=True)
+
+        for item in self.folder.iterdir():
+            item.unlink()
 
         self.recordings = np.asarray([[0 for _ in range(self.total_time)] for _ in range(self.num_transducers)], dtype=np.float32)
 
         self.source_z = kwargs["source_z"]
         self.source_x = kwargs["source_x"]
 
-        self.source = gaussian(self.total_time, 1.5)
-        self.source = np.roll(self.source, -1 * int(self.total_time / 2 - 20)).astype(np.float32)
+        self.source = np.load('./source.npy').astype(np.float32)
+        if len(self.source) < self.total_time:
+            self.source = np.pad(self.source, (0, self.total_time - len(self.source)), 'constant').astype(np.float32)
+        elif len(self.source) > self.total_time:
+            self.source = self.source[:self.total_time]
+
+        # plt.figure()
+        # plt.plot(self.source)
+        # plt.show()
+
+        # self.source = gaussian(self.total_time, 1.5)
+        # self.source = np.roll(self.source, -1 * int(self.total_time / 2 - 20)).astype(np.float32)
 
         self.info_i32 = np.array(
             [
@@ -52,7 +69,7 @@ class AcousticSimulator(SimulationHandler):
             'psi_x': (self.roi_nbytes, True),
             'infoI32': (self.info_i32, False),
             'infoF32': (self.info_f32, False),
-            'c': (self.c, False),
+            'c': (self.c_with_reflectors, False),
             'source': (self.source, False),
             'absorption_z': (self.absorption_z, False),
             'absorption_x': (self.absorption_x, False),
@@ -62,7 +79,7 @@ class AcousticSimulator(SimulationHandler):
         }
 
         self.wgpu_handler.set_buffers(wgsl_data, "p_next")
-        self.wgpu_handler.create_buffers()
+        self.wgpu_handler.create_buffers(debug=False)
         self.wgpu_handler.create_bind_group_layouts()
         self.wgpu_handler.create_pipeline_layout()
         self.wgpu_handler.create_bind_groups()
@@ -96,12 +113,14 @@ class AcousticSimulator(SimulationHandler):
 
             self.recordings[:, i] = self.p_next[self.transducer_z[:], self.transducer_x[:]]
 
-            if i % 50 == 0:
+            if i == 0 or (i + 1) % 50 == 0:
+                print(f"Simulated {i + 1}/{self.total_time}")
                 plt.figure()
-                plt.scatter(self.transducer_x, self.transducer_z, s=0.05)
-                plt.scatter(self.source_x, self.source_z, s=0.05)
-                plt.imshow(self.p_next, cmap='bwr')
-                plt.savefig(f'./plots/pf_{i}.png', dpi=300)
+                plt.scatter(self.transducer_x, self.transducer_z, 0.1)
+                plt.scatter(self.source_x, self.source_z, 0.1)
+                plt.scatter(self.reflector_x, self.reflector_z, 0.1)
+                plt.imshow(self.p_next, cmap='coolwarm')
+                plt.savefig(f'{self.plots_folder}/pf_{i}.png', dpi=300)
                 plt.close()
 
         np.save(f"{self.folder}/recordings.npy", self.recordings)
