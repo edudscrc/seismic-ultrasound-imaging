@@ -31,11 +31,7 @@ class DAS_TimeReversal(DAS_SimulationHandler):
         # Normalize bscan
         self.flipped_bscan = self.flipped_bscan / np.amax(np.abs(self.flipped_bscan))
 
-        increment_time = 9000
-        self.total_time += increment_time
-        self.flipped_bscan = np.concatenate((self.flipped_bscan, np.zeros((self.flipped_bscan.shape[0], increment_time), dtype=np.float32)), axis=1)
-
-        self.cmap_vmax = 3
+        self.cmap_vmax = 2
         self.cmap_vmin = -self.cmap_vmax
 
         # WebGPU Buffer
@@ -110,8 +106,6 @@ var<storage,read> flipped_recording_{i}: array<f32>;\n\n'''
         simulate = self.wgpu_handler.create_compute_pipeline("simulate")
         increment_time = self.wgpu_handler.create_compute_pipeline("increment_time")
 
-        l2_norm = np.zeros(self.grid_size_shape, dtype=np.float32)
-
         for i in range(self.total_time):
             command_encoder = self.wgpu_handler.device.create_command_encoder()
             compute_pass = command_encoder.begin_compute_pass()
@@ -128,29 +122,16 @@ var<storage,read> flipped_recording_{i}: array<f32>;\n\n'''
 
             compute_pass.end()
             self.wgpu_handler.device.queue.submit([command_encoder.finish()])
-
-            self.p_next = self.wgpu_handler.read_buffer(group=0, binding=0)
-            self.p_next = np.frombuffer(self.p_next, dtype=np.float32).reshape(self.grid_size_shape)
-
-            l2_norm += np.square(self.p_next)
             
-            if i == 0 or (i + 1) % 50 == 0:
+            if (i + 1) % 5 == 0:
                 print(f"Simulated {i + 1}/{self.total_time}")
+                self.p_next = self.wgpu_handler.read_buffer(group=0, binding=0)
+                self.p_next = np.frombuffer(self.p_next, dtype=np.float32).reshape(self.grid_size_shape)
                 plt.figure()
                 plt.scatter(self.transducer_x, self.transducer_z, s=0.1)
                 plt.imshow(self.p_next, cmap='coolwarm', aspect='auto', vmax=self.cmap_vmax, vmin=self.cmap_vmin)
                 plt.colorbar()
                 plt.savefig(f'{self.plots_folder}/pf_{i}.png', dpi=300)
                 plt.close()
-
-        l2_norm = np.sqrt(l2_norm)
-
-        np.save("l2_norm.npy", l2_norm)
-
-        plt.figure()
-        plt.imshow(l2_norm, aspect='auto')
-        plt.colorbar()
-        plt.title("L2-Norm - Time Reversal")
-        plt.show()
 
         print('Time Reversal Simulation finished.')

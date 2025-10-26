@@ -18,8 +18,6 @@ dx = np.float32((spatial_end - spatial_start) / bscan.shape[0])
 dz = dx
 dt = np.float32(1 / fs)
 
-print(f'{dx = }')
-
 num_transducers = int(offset_idx * 2)
 total_time = bscan.shape[1]
 
@@ -70,7 +68,6 @@ global_sim_params = {
 }
 
 bscan = bscan[apex_idx-offset_idx:apex_idx+offset_idx, :]
-print(bscan.shape)
 
 tr_config = {
     'bscan': bscan
